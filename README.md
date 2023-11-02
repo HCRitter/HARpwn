@@ -32,7 +32,7 @@ HARpwn is a PowerShell module designed to streamline the extraction and sanitiza
    - Use Remove-HARToken to sanitize a HAR file by replacing sensitive tokens with a specified word (default is "Removed").
    - Example
   
-  ```powershell
-  Remove-HARToken -type Graph -filePath 'C:\path\to\example.har' -SantinzeWord 'Redacted'
-  ```
+    ```powershell
+    Remove-HARToken -type Graph -filePath 'C:\path\to\example.har' -SantinzeWord 'Redacted'
+    ```
   
