@@ -1,3 +1,16 @@
+class TokenType : System.Management.Automation.IValidateSetValuesGenerator {
+    [String[]] GetValidValues() {
+        $Script:TokenTypes = @{ 
+            'graph.microsoft'     = 'https://graph.microsoft.com/'
+            'graph'               = 'https://graph.microsoft.com/' #legacy value for parameter
+            'portal.office'       = 'https://portal.office.com/'
+            'substrate.office'    = 'https://substrate.office.com/'
+            'my.sharepoint'       = 'my.sharepoint.com'
+        }
+        return ($Script:TokenTypes).Keys
+    }
+}
+
 function Get-HARToken {
     <#
     .SYNOPSIS
@@ -22,29 +35,46 @@ function Get-HARToken {
     #>
     [CmdletBinding()]
     param (
-        [ValidateSet('Graph')]
-        $type,
+        [ValidateSet([TokenType],ErrorMessage="Value '{0}' is invalid. Try one of: {1}")]
+        [string[]]$type,
         [string]
-        $filePath
+        $filePath,
+        [switch]$all
     )
     
     begin {
         $Har = Get-Content -Path $filePath | ConvertFrom-Json
         $Responses = $har.log.entries.response.content.text
+
     }
     
     process {
-        switch($Type){
-            'Graph'{
-                foreach($Response in $Responses){
-                    try{$Response | ConvertFrom-Json -ErrorAction SilentlyContinue | Where-Object { $_.token_type -eq 'Bearer' -and $_.Scope.contains("graph")} | ForEach-Object{
-                        [PSCustomObject]@{
-                            Scopes = -split$_.scope | Where-Object{$_.contains("graph")}|ForEach-Object{([uri]$_).absolutePath-replace"/"}
-                            Token = $_.access_token
-                            RefreshToken = $_.refresh_token
-                            ExpiresIn = $_.Expires_In
-                        }
-                    }}catch{}
+        $TokenSets = foreach($Response in $Responses){
+            try{
+                $Response | ConvertFrom-Json -ErrorAction SilentlyContinue | Where-Object { $_.token_type -eq 'Bearer'}
+            
+            }catch{}
+        }
+        if($all){
+            $TokenSets |ForEach-Object{
+                [PSCustomObject]@{
+                    Scopes = -split$_.scope 
+                    Token = $_.access_token
+                    RefreshToken = $_.refresh_token
+                    ExpiresIn = $_.Expires_In
+                    Type = 'all'
+                }
+            }
+            return
+        }
+        foreach($typeElement in $type){
+            $TokenSets|Where-Object{ $_.Scope.contains($script:TokenTypes[$typeElement])} | ForEach-Object{
+                [PSCustomObject]@{
+                    Scopes = -split$_.scope | Where-Object{$_.contains($script:TokenTypes[$typeElement])}|ForEach-Object{([uri]$_).absolutePath-replace"/"}
+                    Token = $_.access_token
+                    RefreshToken = $_.refresh_token
+                    ExpiresIn = $_.Expires_In
+                    Type = $typeElement
                 }
             }
         }
