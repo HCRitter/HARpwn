@@ -112,8 +112,8 @@ function Remove-HARToken {
     #>
     [CmdletBinding()]
     param (
-        [ValidateSet('Graph')]
-        $type,
+        [ValidateSet([TokenType],ErrorMessage="Value '{0}' is invalid. Try one of: {1}")]
+        [string[]]$type,
         [string]
         $filePath,
         $SantinzeWord ="Removed"
